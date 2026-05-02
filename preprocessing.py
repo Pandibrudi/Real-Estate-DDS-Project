@@ -1,13 +1,44 @@
 import pandas as pd
+from pandas import DataFrame
 from bs4 import BeautifulSoup
 
-def remove_html_tags(data):
-    column = data['descriptionHtml'].tolist()
+class Preprocessor:
+    """
+        Args:
+            data: a pandas Dataframe object.
+        
+        remove_html_tags:
+            Args:
+                self
+                text: a String containing html tags.
+        
+    """
 
-    clean_data = [] # TODO should be doing this in the df directly, just testing
-    for row in column:
-        soup = BeautifulSoup(row, "html.parser")
-        text = soup.get_text()
-        clean_data.append(text)
+    def __init__(self, data:DataFrame):
+        self.data = data
+
+    # ALL METHODS
+
+    def remove_html_tags(self,text):
+        soup = BeautifulSoup(text, "html.parser")
+        cleaned_text = soup.get_text()
+            
+        return cleaned_text
     
-    return clean_data
+    def remove_double_whitespace(self, text):
+        cleaned_text = text.replace("  ", " ")
+        return cleaned_text
+    
+    # CLEANING METHOD
+    
+    def cleaning(self, column, methods:list):
+        for m in methods:
+            self.data[column] = self.data[column].apply(m)
+        return self.data
+    
+    
+
+
+
+
+
