@@ -29,9 +29,14 @@ class Preprocessor:
         cleaned_text = text.replace("  ", " ")
         return cleaned_text
     
-    # CLEANING METHOD
+    # CLEANING METHODS
+
+    def remove_pattern_from_column(self, column, pattern):
+        self.data[column] = self.data[column].str.replace(pattern, '', regex=True)
+        return f"removed {pattern} from column {column}."
+
     
-    def cleaning(self, column, methods:list):
+    def multi_cleaning(self, column, methods:list):
         for m in methods:
             self.data[column] = self.data[column].apply(m)
         return self.data
