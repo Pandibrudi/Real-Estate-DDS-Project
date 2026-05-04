@@ -13,12 +13,15 @@ def main():
     # COLUMNS
     # descriptionHtml
     p.apply_method_to_column("descriptionHtml", p.remove_html_tags)
+    to_be_removed = ["• ", "  ", "***"]
+    for e in to_be_removed:
+        p.remove_pattern_from_column("descriptionHtml", e)
 
     # addedON
 
     p.remove_pattern_from_column("addedOn", r"[A-Za-z]*\W*([A-Z]|[a-z])") # needs to be done after filling missing entries
 
-    print(p.data[1000:])
+    print(p.data[180:185])
 
 
 

@@ -1,4 +1,5 @@
 import pandas as pd
+import re
 from pandas import DataFrame
 from bs4 import BeautifulSoup
 
@@ -39,8 +40,16 @@ class Preprocessor:
     # COLUMN SPECIFIC METHODS
 
     def remove_pattern_from_column(self, column, pattern):
-        self.data[column] = self.data[column].str.replace(pattern, '', regex=True)
-        print("removed {pattern} from column {column}.")
+        try:
+            re.compile(pattern)
+            regex = True
+        except re.error:
+            print("Non valid regex pattern")
+            regex = False
+        
+        self.data[column] = self.data[column].str.replace(pattern, '', regex=regex)
+        
+        print(f"removed {pattern} from column {column}.")
         return self.data
     
     def apply_method_to_column(self, column, method):
