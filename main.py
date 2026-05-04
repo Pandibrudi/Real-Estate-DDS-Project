@@ -1,5 +1,3 @@
-from bs4 import BeautifulSoup
-
 from dataloader import load_data
 from preprocessing import Preprocessor
 
@@ -9,20 +7,20 @@ PATH="data/realestate_data_london_2024_nov.csv"
 
 def main():
     data = load_data(PATH)
-
-    print(len(data))
     
     p = Preprocessor(data)
 
-    cleaned_data = p.multi_cleaning('descriptionHtml', [p.remove_html_tags, p.remove_double_whitespace])
-    
-    print(cleaned_data['descriptionHtml'][1])
+    # COLUMNS
+    # descriptionHtml
+    p.apply_method_to_column("descriptionHtml", p.remove_html_tags)
 
-    p.remove_pattern_from_column('addedOn', r"[A-Za-z]+\s")
+    # addedON
 
-    print(cleaned_data['addedOn'][1:1019])
+    p.remove_pattern_from_column("addedOn", r"[A-Za-z]*\W*([A-Z]|[a-z])") # needs to be done after filling missing entries
 
-    # still need smth for addedOn "updated today"
+    print(p.data[1000:])
+
+
 
 
 if __name__ == "__main__":
