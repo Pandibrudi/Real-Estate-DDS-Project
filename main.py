@@ -37,7 +37,7 @@ def text_analysis(df):
     df["descriptionHtml"] = df["descriptionHtml"].apply(clean_string)
     df = tokenize_column(df, "descriptionHtml")
     ngrams = get_ngrams(df, "descriptionHtml_tokens", 2) # descriptionHtml_tokens is the output column from the tokenizer function
-    ngram_freq = get_ngram_frequencies(ngrams)
+    ngram_freq = get_ngram_frequencies(ngrams, top_k=20)
     ngram_visuals(ngram_freq)
     return df
 

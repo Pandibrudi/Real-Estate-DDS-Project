@@ -9,7 +9,7 @@ def ngram_visuals(data:pd.DataFrame):
     data = data.copy()
     data["ngram"] = data["ngram"].apply(lambda x: tuple(map(str, x)))
     data["ngram"] = data["ngram"].apply(lambda x: " ".join(x))
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(20, 12))
 
     sns.barplot(data=data, x="frequency", y="ngram", color="steelblue")
 
