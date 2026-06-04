@@ -1,18 +1,12 @@
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from collections import Counter
-from numpy.lib.stride_tricks import sliding_window_view
 from nltk import ngrams
 
-import numpy as np
-import pandas as pd
-from numpy.lib.stride_tricks import sliding_window_view
-from tqdm import tqdm
-
-def get_ngrams(df: pd.DataFrame, column: str, n: int, id_col: str = "id") -> pd.DataFrame:
+def get_ngrams(df: pd.DataFrame, column:str, n:int, id_col:str="id"):
     records = []
-    for _, row in df.iterrows():
+    pbar = tqdm(df.iterrows(), desc=f"Getting n-grams for {column}")
+    for _, row in pbar:
         text = row[column]
         if text is not None:
             tokens = text

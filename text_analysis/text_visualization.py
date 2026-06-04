@@ -21,6 +21,7 @@ def ngram_visuals(data:pd.DataFrame):
 
     t = time.localtime()
     timestamp = time.strftime("%b-%d-%Y_%H%M", t)
+    # when you run this the first time, please create a "visuals" folder in "text_analysis"
     output_file = f"text_analysis/visuals/n_grams-{timestamp}.png" # relative path only works when executed through main, needs to be created in case it's missing
 
     plt.savefig(output_file, bbox_inches="tight")

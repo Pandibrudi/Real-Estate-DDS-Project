@@ -11,6 +11,7 @@ from cleaning.hmtl_clean import remove_html_tags
 from text_analysis.text_preprocessing import clean_string, tokenize_column
 from text_analysis.n_gram_analysis import get_ngrams, get_ngram_frequencies
 from text_analysis.text_visualization import ngram_visuals
+from text_analysis.sentiment_analysis import sentiment_analysis
 
 import uuid
 import duckdb
@@ -35,6 +36,7 @@ def clean (df):
 
 def text_analysis(df):
     df["descriptionHtml"] = df["descriptionHtml"].apply(clean_string)
+    df = sentiment_analysis(df, "descriptionHtml")
     df = tokenize_column(df, "descriptionHtml")
     ngrams = get_ngrams(df, "descriptionHtml_tokens", 2) # descriptionHtml_tokens is the output column from the tokenizer function
     ngram_freq = get_ngram_frequencies(ngrams, top_k=20)

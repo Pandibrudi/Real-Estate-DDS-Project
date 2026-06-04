@@ -2,10 +2,6 @@ import re
 import spacy
 import pandas as pd
 from tqdm import tqdm
-from datasets import load_dataset
-from collections import Counter
-from nltk import ngrams
-
 
 nlp = spacy.load("en_core_web_sm")
 # adding non-standard stop words
@@ -15,7 +11,6 @@ nlp.Defaults.stop_words.add("ft")
 def clean_string(text:str):
     text = re.sub(r'[^a-zA-Z0-9 ]+', '', text)
     return re.sub(r'\s+', ' ', text).strip()
-
 
 def tokenize_column(df:pd.DataFrame, column:str, remove_stopwords:bool = True, lowercase:bool = True):
     def tokenize(text):
