@@ -3,6 +3,9 @@ import spacy
 import pandas as pd
 from spacytextblob.spacytextblob import SpacyTextBlob
 
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 nlp = spacy.load("en_core_web_sm")
 nlp.add_pipe('spacytextblob')
 
@@ -18,12 +21,13 @@ def sentiment_analysis(df:pd.DataFrame, column:str):
     new_df[f"{column}_sentiment_score"] = new_df[column].progress_apply(get_sentiment)
     return new_df
 
-def label_sentiment(df:pd.DataFrame, column:str, threshold:float=0.1):
+def label_sentiment(df:pd.DataFrame, column:str, threshold:float=0.26):
+    # adjust threshold according to distribution!
     labels = ["Neutral", "Positive", "Negative"]
-    def determine_label(score:float, threshhold=threshold):
-        if score >= threshhold:
+    def determine_label(score:float, threshold=threshold):
+        if score >= threshold:
             return labels[1]
-        elif score < threshhold:
+        elif score < threshold:
             return labels[2]
         else:
             return labels[0]
@@ -35,6 +39,16 @@ def label_sentiment(df:pd.DataFrame, column:str, threshold:float=0.1):
     return new_df
 
 def get_sentiment_distribution(df:pd.DataFrame, column:str):
-    pass
-        
+    dist = {}
+    dist["q25"] = df[column].quantile(0.25)
+    dist["q75"] = df[column].quantile(0.75)
+    dist["iqr"] = dist["q75"] - dist["q25"]    
+
+    # console printout - could be commented out
+    print(f"25th percentile: {dist["q25"]:.4f}")
+    print(f"75th percentile: {dist["q75"]:.4f}")
+    print(f"IQR: {dist["iqr"]:.4f}")
+    print(df[column].describe())
+    return df, dist
+
 
