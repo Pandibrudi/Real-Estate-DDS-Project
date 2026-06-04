@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 nlp = spacy.load("en_core_web_sm")
 nlp.add_pipe('spacytextblob')
 
-def sentiment_analysis(df:pd.DataFrame, column:str):
-    def get_sentiment(text):
+def sentiment_analysis(df:pd.DataFrame, column:str, granularity="doc"):
+    
+    def get_sentiment(text, granularity=granularity):
         doc = nlp(text)
-        polarity = doc._.blob.polarity  
-        
+        polarity = doc._.blob.polarity
         return polarity
     
     new_df = df.copy()
@@ -35,7 +35,6 @@ def label_sentiment(df:pd.DataFrame, column:str, threshold:float=0.26):
     new_df = df.copy()
     tqdm.pandas(desc=f"Labelling sentiments for column '{column}'")
     new_df[f"{column}_sentiment"] = new_df[column].progress_apply(determine_label)
-    new_df.to_csv("test.csv")
     return new_df
 
 def get_sentiment_distribution(df:pd.DataFrame, column:str):

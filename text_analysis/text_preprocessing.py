@@ -4,9 +4,12 @@ import pandas as pd
 from tqdm import tqdm
 
 nlp = spacy.load("en_core_web_sm")
-# adding non-standard stop words
+# adding non-standard stop words, open to discussion
 nlp.Defaults.stop_words.add("sq")
 nlp.Defaults.stop_words.add("ft")
+nlp.Defaults.stop_words.add("ground")
+nlp.Defaults.stop_words.add("floor")
+nlp.Defaults.stop_words.add("room")
 
 def clean_string(text:str):
     text = re.sub(r'[^a-zA-Z0-9 ]+', '', text)

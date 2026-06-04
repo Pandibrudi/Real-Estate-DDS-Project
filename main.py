@@ -9,8 +9,8 @@ from cleaning.location_extraction import clean_location, enrich_postcodes
 from cleaning.hmtl_clean import remove_html_tags
 
 from text_analysis.text_preprocessing import clean_string, tokenize_column
-from text_analysis.n_gram_analysis import get_ngrams, get_ngram_frequencies
-from text_analysis.text_visualization import ngram_visuals, sent_dist_visuals
+from text_analysis.n_gram_analysis import get_ngrams, get_ngram_frequencies, ngrams_per_quartile
+from text_analysis.text_visualization import ngram_visuals, sent_dist_visuals, ngram_quartile_visuals
 from text_analysis.sentiment_analysis import sentiment_analysis, label_sentiment, get_sentiment_distribution
 
 import uuid
@@ -37,12 +37,15 @@ def clean (df):
 def text_analysis(df, text_column="descriptionHtml"):
     df[text_column] = df[text_column].apply(clean_string)
     df = sentiment_analysis(df, text_column)
+
     sen_dist = get_sentiment_distribution(df, f"{text_column}_sentiment_score")
     sent_dist_visuals(sen_dist[0], sen_dist[1], column=f"{text_column}_sentiment_score")
     df = label_sentiment(df, f"{text_column}_sentiment_score")
     df = tokenize_column(df, f"{text_column}")
-    ngrams = get_ngrams(df, f"{text_column}_tokens", 2) # descriptionHtml_tokens is the output column from the tokenizer function
-    ngram_freq = get_ngram_frequencies(ngrams, top_k=20)
+    ngrams = get_ngrams(df, f"{text_column}_tokens", n=3) # descriptionHtml_tokens is the output column from the tokenizer function
+    quartile_counts = ngrams_per_quartile(df, ngrams, feature="price", top_k=15)
+    ngram_quartile_visuals(quartile_counts, feature="price", top_k=15)
+    ngram_freq = get_ngram_frequencies(ngrams, top_k=30)
     ngram_visuals(ngram_freq)
     return df
 
