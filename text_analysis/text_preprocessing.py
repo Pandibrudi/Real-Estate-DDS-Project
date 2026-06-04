@@ -8,7 +8,9 @@ from nltk import ngrams
 
 
 nlp = spacy.load("en_core_web_sm")
-
+# adding non-standard stop words
+nlp.Defaults.stop_words.add("sq")
+nlp.Defaults.stop_words.add("ft")
 
 def clean_string(text:str):
     text = re.sub(r'[^a-zA-Z0-9 ]+', '', text)

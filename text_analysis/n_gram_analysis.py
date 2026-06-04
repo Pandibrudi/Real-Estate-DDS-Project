@@ -3,36 +3,22 @@ import pandas as pd
 from tqdm import tqdm
 from collections import Counter
 from numpy.lib.stride_tricks import sliding_window_view
+from nltk import ngrams
 
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view
 from tqdm import tqdm
 
-def get_ngrams(df: pd.DataFrame, column: str, n: int, id_col: str = "id"):
-    lengths = df[column].str.len().to_numpy()
-
-    flat = np.concatenate(df[column].to_numpy())
-    doc_ids = np.repeat(df[id_col].to_numpy(), lengths)
-
-    windows = sliding_window_view(flat, n)
-    window_docs = sliding_window_view(doc_ids, n)
-
-    valid_mask = np.zeros(len(windows), dtype=bool)
-
-    start = 0
-    pbar = tqdm(lengths, desc=f"Getting n-grams (n={n}) for '{column}'")
-
-    for length in pbar:
-        if length >= n:
-            valid_mask[start:start + length - n + 1] = True
-        start += length
-
-    ngrams = windows[valid_mask]
-    docs = window_docs[:, 0][valid_mask]  # all tokens in a window share same doc_id
-
-    new_df = pd.DataFrame({"doc_id": docs, "ngram": list(map(tuple, ngrams))})
-    print(new_df)
+def get_ngrams(df: pd.DataFrame, column: str, n: int, id_col: str = "id") -> pd.DataFrame:
+    records = []
+    for _, row in df.iterrows():
+        text = row[column]
+        if text is not None:
+            tokens = text
+            for gram in ngrams(tokens, n):
+                records.append({"doc_id": row[id_col], "ngram": gram})
+    new_df = pd.DataFrame(records, columns=["doc_id", "ngram"])
     return new_df
 
 def get_ngram_frequencies(df:pd.DataFrame, top_k:int=50):
