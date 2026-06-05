@@ -3,14 +3,11 @@ import spacy
 import pandas as pd
 from spacytextblob.spacytextblob import SpacyTextBlob
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
 nlp = spacy.load("en_core_web_sm")
 nlp.add_pipe('spacytextblob')
 
 def sentiment_analysis(df:pd.DataFrame, column:str, granularity="doc"):
-    
+    # still thinking about using granularity to get word level sentiment    
     def get_sentiment(text, granularity=granularity):
         doc = nlp(text)
         polarity = doc._.blob.polarity

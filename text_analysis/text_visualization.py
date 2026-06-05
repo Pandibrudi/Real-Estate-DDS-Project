@@ -1,5 +1,3 @@
-import os
-import re
 import time
 import pandas as pd
 import seaborn as sns
@@ -49,7 +47,7 @@ def sent_dist_visuals(df, dist:dict, column:str, save:bool=True):
     plt.show()
     return dist
 
-def ngram_quartile_visuals(quartile_ngram_counts: dict, feature: str, top_k: int = 10, save: bool = True):
+def ngram_quartile_visuals(quartile_ngram_counts:dict, feature:str, top_k:int = 10, save:bool = True):
     fig, axes = plt.subplots(2, 2, figsize=(32, 20), sharey=False)
     axes = axes.flatten()
     fig.suptitle(f"Top {top_k} N-grams per {feature} Quartile", fontsize=22, fontweight='bold', y=1.02)
