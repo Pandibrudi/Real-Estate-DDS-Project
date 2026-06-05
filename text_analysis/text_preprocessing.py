@@ -5,10 +5,13 @@ from tqdm import tqdm
 
 nlp = spacy.load("en_core_web_sm")
 
+def remove_boilerplate(text, boilerplate):
+    pattern = "|".join(map(re.escape, boilerplate))
+    return re.sub(pattern, "", text)
+
 def add_stop_words(stopwords:list):
     for i in stopwords:
         nlp.Defaults.stop_words.add(i)
-
 
 def clean_string(text:str):
     text = re.sub(r'[^a-zA-Z0-9 ]+', '', text)
