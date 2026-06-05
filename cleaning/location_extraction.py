@@ -3,6 +3,8 @@ import re
 import pandas as pd
 import requests
 import time
+import numpy as np
+from math import radians, sin, cos, sqrt, atan2
 
 skip_values = {"united kingdom", "england", "london", "greater london"}
 
@@ -81,7 +83,7 @@ def enrich_postcodes(df, cache_path="data/postcode_cache.csv"):
             continue
 
         print(f"[{count}/{total}] Fetching: {street} {postcode}")
-        data = fetch_postcode_data(street, postcode)
+        data = fetch_postcode_data(postcode)
 
         for col in ["latitude", "longitude", "district", "ward", "constituency"]:
             df.loc[idx, col] = data.get(col)
@@ -170,10 +172,62 @@ def fill_missing_from_street_lookup(df):
     df.loc[missing_postcode, "postcode"] = df.loc[missing_postcode, "street"].map(lookup["postcode"])
     return df
 
+def avg_crime_rate(lat, lon):
+    url = f"https://data.police.uk/api/crimes-street/all-crime?lat={lat}&lng={lon}&date=2024-11"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return len(response.json())
+    else:
+        return np.nan
+
+#https://www.doogal.co.uk/london_stations
+def enrich_with_location_data(df):
+    stations_df = pd.read_csv("data/london_stations.csv")
+    stations_df = stations_df.dropna(subset=["Latitude", "Longitude"])
+    missing_count = 0
+    total = len(df["latitude"])
+    location_cache = {} 
+    #euclidean distance in lat/lon space is not accurate but gives a rough estimate of proximity to stations
+    for i, row in df.iterrows():
+        if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+            continue
+        lat, lon = row["latitude"], row["longitude"]
+        cache_key = (round(lat, 5), round(lon, 5)) 
+
+        if cache_key in location_cache:
+            df.loc[i, "distance_to_tube"] = location_cache[cache_key]["distance_to_tube"]
+            df.loc[i, "crime_count"] = location_cache[cache_key]["crime_count"]
+            print(f"[{i}/{total}] Cache hit: {cache_key}")
+            continue
+
+        dists = np.sqrt(
+            (stations_df["Latitude"] - row["latitude"])**2 + 
+            (stations_df["Longitude"] - row["longitude"])**2
+        )
+        nearest = stations_df.iloc[dists.idxmin()]
+        R = 6371
+        lat1, lon1 = np.radians(row["latitude"]), np.radians(row["longitude"])
+        lat2, lon2 = np.radians(nearest["Latitude"]), np.radians(nearest["Longitude"])
+        dlat, dlon = lat2 - lat1, lon2 - lon1
+        a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlon/2)**2
+        df.loc[i, "distance_to_tube"] = R * 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
+        df.loc[i, "crime_count"] = avg_crime_rate(row["latitude"], row["longitude"])
+        location_cache[cache_key] = {
+            "distance_to_tube": df.loc[i, "distance_to_tube"],
+            "crime_count": df.loc[i, "crime_count"]
+        }
+        missing_count += 1
+        print(f"[{missing_count}/{total}] Crime Count Calculated: {df.loc[i, 'crime_count']}")
+    print("Done Enriching With Location Data.")    
+    return df
+
+     
+
 
 def clean_location(df):
     location_df = df["title"].apply(extract_location).apply(pd.Series)
     df = pd.concat([df, location_df], axis=1)
     df = fill_missing_from_street_lookup(df)
     df = enrich_postcodes(df)
+    df = enrich_with_location_data(df)
     return df
