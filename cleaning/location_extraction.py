@@ -1,10 +1,13 @@
 import os
 import re
+from duckdb import df
 import pandas as pd
 import requests
 import time
-
+import numpy as np
+from math import radians, sin, cos, sqrt, atan2
 skip_values = {"united kingdom", "england", "london", "greater london"}
+
 
 def fetch_by_street_nominatim(street):
     if pd.isna(street):
@@ -60,67 +63,71 @@ def fetch_postcode_data(postcode):
         pass
     return {}
 
-def enrich_postcodes(df, cache_path="data/postcode_cache.csv"):
-    if os.path.exists(cache_path):
-        cache = pd.read_csv(cache_path, index_col="postcode")
-    else:
-        cache = pd.DataFrame(columns=["postcode", "latitude", "longitude", "district", "ward", "constituency"]).set_index("postcode")
-    mask = df["postcode"].notna()
+def load_postcode_cache(path, column="postcode"):
+    if os.path.exists(path):
+        df = pd.read_csv(path)
+        return df.set_index('postcode').to_dict(orient="index")
+    return {}
+
+def resolve_postcode(postcode, cache):
+    if postcode in cache:
+        return cache[postcode]
+    data = fetch_postcode_data(postcode)
+    resolved = {
+        "latitude": data.get("latitude"),
+        "longitude": data.get("longitude"),
+        "district": data.get("district"),
+        "ward": data.get("ward"),
+        "constituency": data.get("constituency"),
+    }
+    cache[postcode] = resolved
+    return resolved
+
+
+def enrich_postcodes(df, cache_path="data/postcode_cache.csv", column="postcode"):
+
+    cache = load_postcode_cache(cache_path, column)
+    mask = df[column].notna()
     total = mask.sum()
-    count = 0
 
-    for idx, row in df.loc[mask].iterrows():
-        count += 1
-        postcode = row["postcode"]
-        street = row.get("street")
-
-        if postcode in cache.index:
-            print(f"[{count}/{total}] Cache hit: {postcode}")
-            for col in ["latitude", "longitude", "district", "ward", "constituency"]:
-                df.loc[idx, col] = cache.loc[postcode, col] if col in cache.columns else None
+    for i, (idx, row) in enumerate(df.loc[mask].iterrows()):
+        postcode = row[column]
+        if postcode in cache:
+            print(f"[{i}/{total}] Cache hit: {postcode}")
+            df.loc[idx, "latitude"] = cache[postcode].get("latitude")
+            df.loc[idx, "longitude"] = cache[postcode].get("longitude")     
             continue
 
-        print(f"[{count}/{total}] Fetching: {street} {postcode}")
-        data = fetch_postcode_data(street, postcode)
+        data = resolve_postcode(postcode, cache)
+        cache[postcode] = data
 
-        for col in ["latitude", "longitude", "district", "ward", "constituency"]:
-            df.loc[idx, col] = data.get(col)
+        for k, v in data.items():
+            df.loc[idx, k] = v
 
-        cache.loc[postcode] = data
-        cache.to_csv(cache_path)
-        time.sleep(0.1)
+        if i % 100 == 0:
+            print(f"{i}/{total} processed")
 
-    missing_mask = df["postcode"].isna() & df["street"].notna()
-    missing_total = missing_mask.sum()
-    missing_count = 0
+    pd.DataFrame.from_dict(cache, orient="index") \
+        .to_csv(cache_path, index_label="postcode")
 
-    for idx, row in df.loc[missing_mask].iterrows():
-        missing_count += 1
-        street = row["street"]
-        print(f"[{missing_count}/{missing_total}] Nominatim fallback: {street}")
-        
-        data = fetch_by_street_nominatim(street)
-        
-        if data.get("postcode"):
-            df.loc[idx, "postcode"] = data["postcode"]
+    return df
+
+def enrich_missing_from_street(df):
+
+    missing = df["postcode"].isna() & df["street"].notna()
+
+    for idx, row in df.loc[missing].iterrows():
+
+        data = fetch_by_street_nominatim(row["street"])
+
         df.loc[idx, "latitude"] = data.get("latitude")
         df.loc[idx, "longitude"] = data.get("longitude")
-        
-        # fetch district/ward/constituency from postcodes.io using the new postcode - we tore in cache to stop spamming
+
         if data.get("postcode"):
-            postcode_data = fetch_postcode_data(data["postcode"])
-            for col in ["district", "ward", "constituency"]:
-                df.loc[idx, col] = postcode_data.get(col)
-            if df.loc[idx, "area"] is None and postcode_data.get("ward"):
-                df.loc[idx, "area"] = postcode_data["ward"]
-        
-        time.sleep(1) 
+            df.loc[idx, "postcode"] = data["postcode"]
 
-    area_mask = df["area"].isna() & df["ward"].notna()
-    df.loc[area_mask, "area"] = df.loc[area_mask, "ward"]
-
-    print("Done The Enrichment Gathering.")
     return df
+
 
 def extract_location(title):
     if pd.isna(title):
@@ -170,10 +177,68 @@ def fill_missing_from_street_lookup(df):
     df.loc[missing_postcode, "postcode"] = df.loc[missing_postcode, "street"].map(lookup["postcode"])
     return df
 
+def avg_crime_rate(lat, lon):
+    url = f"https://data.police.uk/api/crimes-street/all-crime?lat={lat}&lng={lon}&date=2024-11"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return len(response.json())
+    else:
+        return np.nan
+
+#split out for reuse:
+def haverstine_distance(lat1, lon1, lat2, lon2):
+    R = 6371
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    return R * 2 * atan2(sqrt(a), sqrt(1-a))
+
+
+#https://www.doogal.co.uk/london_stations
+def enrich_with_location_data(df):
+    stations_df = pd.read_csv("data/london_stations.csv")
+    stations_df = stations_df.dropna(subset=["Latitude", "Longitude"])
+    missing_count = 0
+    total = len(df["latitude"])
+    location_cache = {} 
+    #euclidean distance in lat/lon space is not accurate but gives a rough estimate of proximity to stations
+    for i, row in df.iterrows():
+        if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+            continue
+        lat, lon = row["latitude"], row["longitude"]
+        cache_key = (round(lat, 5), round(lon, 5)) 
+
+        if cache_key in location_cache:
+            df.loc[i, "distance_to_tube"] = location_cache[cache_key]["distance_to_tube"]
+            df.loc[i, "crime_count"] = location_cache[cache_key]["crime_count"]
+            print(f"[{i}/{total}] Cache hit: {cache_key}")
+            continue
+
+        dists = np.sqrt(
+            (stations_df["Latitude"] - row["latitude"])**2 + 
+            (stations_df["Longitude"] - row["longitude"])**2
+        )
+        nearest = stations_df.iloc[dists.idxmin()]
+        df.loc[i, "distance_to_tube"] = haverstine_distance(row["latitude"], row["longitude"], nearest["Latitude"], nearest["Longitude"])
+        df.loc[i, "crime_count"] = avg_crime_rate(row["latitude"], row["longitude"])
+        location_cache[cache_key] = {
+            "distance_to_tube": df.loc[i, "distance_to_tube"],
+            "crime_count": df.loc[i, "crime_count"]
+        }
+        missing_count += 1
+        print(f"[{missing_count}/{total}] Crime Count Calculated: {df.loc[i, 'crime_count']}")
+    print("Done Enriching With Location Data.")    
+    return df
 
 def clean_location(df):
     location_df = df["title"].apply(extract_location).apply(pd.Series)
     df = pd.concat([df, location_df], axis=1)
     df = fill_missing_from_street_lookup(df)
-    df = enrich_postcodes(df)
+
     return df
+
+
+
+
+
