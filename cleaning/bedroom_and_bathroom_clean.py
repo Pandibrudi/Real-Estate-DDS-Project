@@ -28,7 +28,7 @@ def extract_bedrooms_from_description(description):
 def clean_bedrooms_and_bathrooms(df, group_column = "property_group" ):
     land_mask = df[group_column] == "Land"
     mask = df["bedrooms"].isna()
-    df.loc[mask, "bedrooms"] = df.loc[mask, "title"].apply(extract_bedrooms_from_title)
+    df.loc[mask, "bedrooms"] = df.loc[mask, "title"].apply(extract_bedrooms_from_title).astype("float64")
     mask = df["bedrooms"].isna()
     df.loc[mask, "bedrooms"] = df.loc[mask, "descriptionHtml"].apply(extract_bedrooms_from_description)
     df.loc[land_mask, "bedrooms"] = df.loc[land_mask, "bedrooms"].fillna(0)
