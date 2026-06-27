@@ -41,9 +41,9 @@ def get_sentiment_distribution(df:pd.DataFrame, column:str):
     dist["iqr"] = dist["q75"] - dist["q25"]    
 
     # console printout - could be commented out
-    print(f"25th percentile: {dist["q25"]:.4f}")
-    print(f"75th percentile: {dist["q75"]:.4f}")
-    print(f"IQR: {dist["iqr"]:.4f}")
+    print(f"25th percentile: {dist['q25']:.4f}")
+    print(f"75th percentile: {dist['q75']:.4f}")
+    print(f"IQR: {dist['iqr']:.4f}")
     print(df[column].describe())
     return df, dist
 

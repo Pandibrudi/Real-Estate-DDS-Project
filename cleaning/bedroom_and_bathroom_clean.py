@@ -37,8 +37,8 @@ def clean_bedrooms_and_bathrooms(df, group_column = "property_group" ):
     non_land_mask_bath = ~land_mask & df["bathrooms"].isna()
     median_bathroom_group = df.groupby(group_column)["bathrooms"].transform("median")
     median_bedroom_group = df.groupby(group_column)["bedrooms"].transform("median")
-    df.loc[non_land_mask_bed,"bedrooms"] = median_bathroom_group[non_land_mask_bed]
-    df.loc[non_land_mask_bath,"bathrooms"] = median_bedroom_group[non_land_mask_bath]
+    df.loc[non_land_mask_bed,"bathrooms"] = median_bathroom_group[non_land_mask_bath]
+    df.loc[non_land_mask_bath,"bedrooms"] = median_bedroom_group[non_land_mask_bed]
 
     return df
 
