@@ -1,5 +1,6 @@
 import os
 import re
+from duckdb import df
 import pandas as pd
 import requests
 import time
@@ -7,6 +8,7 @@ import numpy as np
 from math import radians, sin, cos, sqrt, atan2
 
 skip_values = {"united kingdom", "england", "london", "greater london"}
+
 
 def fetch_by_street_nominatim(street):
     if pd.isna(street):
@@ -140,6 +142,7 @@ def enrich_postcodes(df, cache_path="data/postcode_cache.csv", column="postcode"
     print("Done The Postcode Gathering.")
     return df
 
+
 def extract_location(title):
     if pd.isna(title):
         return {"street": None, "area": None, "postcode": None}
@@ -247,3 +250,8 @@ def clean_location(df):
     df = enrich_postcodes(df)
     df = enrich_with_location_data(df)
     return df
+
+
+
+
+
